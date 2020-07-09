@@ -43,6 +43,9 @@
 #include "distortion.h"
 #include "io_video.h"
 
+#if CALC_NOREF_PSNR
+#include "calcpsnr.h"
+#endif
 
 int **PicPos;
 
@@ -330,6 +333,9 @@ typedef struct slice
 {
   struct video_par    *p_Vid;
   struct inp_par      *p_Inp;
+#if CALC_NOREF_PSNR
+  resultsList		  *p_Psnr;
+#endif
   pic_parameter_set_rbsp_t *active_pps;
   seq_parameter_set_rbsp_t *active_sps;
 
@@ -437,6 +443,14 @@ typedef struct slice
 typedef struct video_par
 {
   struct inp_par      *p_Inp;
+
+#if CALC_NOREF_PSNR
+  resultsList		*p_tPsnr;
+  mseRefRes			mseRef;
+  int				skipCnt;
+  Boolean			firstPic;
+#endif
+
   pic_parameter_set_rbsp_t *active_pps;
   seq_parameter_set_rbsp_t *active_sps;
   seq_parameter_set_rbsp_t SeqParSet[MAXSPS];

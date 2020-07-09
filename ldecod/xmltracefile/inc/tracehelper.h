@@ -24,6 +24,7 @@ void getSubMbTypeName_B_Slice(int submb_type, char* typestring);
 void addMVInfoToTrace(Macroblock*);
 void addCoeffsToTrace(Macroblock* currMB, Slice* currSlice);
 void writeMBInfo(Macroblock* currMB, Slice* currSlice);
+void getpredmodstring(Macroblock* currMB, Slice* currSlice, char* string);
 void writeNALInfo(Slice* currSlice);
 void getNALTypeName(int, char*);
 void setCurrentMBType(int value);

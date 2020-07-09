@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include "typedefs.h"
 
 // Typedefs
 #ifdef _MSC_VER
@@ -42,7 +43,7 @@ typedef unsigned int uint;
 typedef unsigned __int64  ssize_t;
 #endif
 
-typedef enum{false, true} boolean;
+//typedef enum{FALSE, TRUE} boolean;
 
 typedef struct anotherList{
     double mseBeta;
@@ -61,16 +62,19 @@ typedef struct {
 
 // Global defines
 #ifdef _DEBUG
-#define DEBUG true
+#define DEBUG FALSE
 #else
-#define DEBUG false 
+#define DEBUG FALSE 
 #endif
+
+#define USE_CAUCHY_MODEL 0
+
 // Number of quantized coefficients each line of the matrix
 #define COEFFICIENTS 16
 // Total number (square matrix)
 #define TOTAL_COEFFICIENTS COEFFICIENTS * COEFFICIENTS
 // Number of iterations in the Newton approximation
-#define LIMIT_NEWTON_ITERATIONS 10000
+#define LIMIT_NEWTON_ITERATIONS 1000
 // Starting value is 0.1. See (11)
 #define BETA_START 0.1 
 // Seeing the practical results, lambda starts with a lower value
@@ -95,8 +99,8 @@ double r(double number);
 double check_macroblock_type(char* predmodestring);
 double calculate_qk(int qp);
 void freeResultsList(resultsList* head);
-void insertResultsList(resultsList** head, double mseBeta, double mseLambda, double psnrBeta, double psnrLambda, boolean predicted);
+void insertResultsList(resultsList** head, double mseBeta, double mseLambda, double psnrBeta, double psnrLambda, Boolean predicted);
 int no_psnr_calculation(resultsList** results_list, int** coefficients, int qp, char* predmodestring, int typeval);
 mseRefRes calc_average_mse(resultsList** head);
 void mse_prediction(float skipRate, resultsList** results_list, mseRefRes mseRef);
-boolean check_all_zeroes(int** coefficients);
+Boolean check_all_zeroes(int** coefficients);

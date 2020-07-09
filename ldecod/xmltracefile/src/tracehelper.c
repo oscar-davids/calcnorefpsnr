@@ -439,7 +439,31 @@ void writeMBInfo(Macroblock* currMB, Slice* currSlice)
 			xml_write_int(currMB->skip_flag);
 	xml_write_end_element();
 }
+void getpredmodstring(Macroblock* currMB, Slice* currSlice, char* string)
+{
+	if (string == 0) return;
 
+	char typestring[255];
+	
+	switch (currSlice->slice_type)
+	{
+	case P_SLICE:
+		getMbTypeName_P_SP_Slice(iCurr_mb_type, currMB, typestring, string, 0);
+		break;
+	case SP_SLICE:
+		getMbTypeName_P_SP_Slice(iCurr_mb_type, currMB, typestring, string, 0);
+		break;
+	case B_SLICE:
+		getMbTypeName_B_Slice(iCurr_mb_type, currMB, typestring, string, 0);
+		break;
+	case I_SLICE:
+		getMbTypeName_I_Slice(iCurr_mb_type, currMB, typestring, string, 0);
+		break;
+	case SI_SLICE:
+		getMbTypeName_SI_Slice(iCurr_mb_type, currMB, typestring, string, 0);
+		break;
+	}
+}
 void writeNALInfo(Slice* currSlice)
 {
 	char typestring[256];

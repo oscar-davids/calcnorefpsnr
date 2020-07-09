@@ -43,6 +43,7 @@
 // Includes
 #include "calcpsnr.h"
 
+
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS		1
 #define restrict					__restrict
@@ -222,7 +223,7 @@ int maintemp(int argc, char **argv){
     }
 
     // Declare other variables
-    boolean inPicture = false, inSlice = false, inMB = false, inRow = false;
+    Boolean inPicture = FALSE, inSlice = FALSE, inMB = FALSE, inRow = FALSE;
 
     char* line = NULL, *allocLine = NULL, *pos_pic_id = NULL, *pos_pic_id_end = NULL,
           *predmodestring = NULL;
@@ -245,7 +246,7 @@ int maintemp(int argc, char **argv){
     read = getline(&line, &len, fr);
 
     while (read != -1) {
-        if (inPicture == false) {
+        if (inPicture == FALSE) {
             if (strstr(line, "<Picture") != NULL) {
                 // find PIC_ID
                 pos_pic_id = strstr(line, "id=");
@@ -266,12 +267,12 @@ int maintemp(int argc, char **argv){
                 fprintf(stdout, "Processing MBs of Pic: %d\n", pic_id);
 
                 // Set flag
-                inPicture = true;
+                inPicture = TRUE;
             }
         }
         else {
             if (strstr(line, "</Picture") != NULL) {
-                inPicture = false;
+                inPicture = FALSE;
 
                 // Save MSE of the first I frame which will be taken as the
                 // reference. 
@@ -337,26 +338,26 @@ int maintemp(int argc, char **argv){
                 }
             }
             else {
-                if (inSlice == false) {
+                if (inSlice == FALSE) {
                     if (strstr(line, "<Slice") != NULL) {
-                        inSlice = true;
+                        inSlice = TRUE;
                         mbcnt = 0;
                     }
                 }
                 else {
                     if (strstr(line, "</Slice") != NULL) {	
-                        inSlice = false;
+                        inSlice = FALSE;
                     }
                     else {
-                        if (inMB == false) {
+                        if (inMB == FALSE) {
                             if (strstr(line, "<MacroBlock") != NULL) {
-                                inMB = true;
+                                inMB = TRUE;
                                 mbcnt += 1;
                             }
                         }
                         else {
                             if (strstr(line, "</MacroBlock") != NULL) {
-                                inMB = false;
+                                inMB = FALSE;
                                 free(predmodestring);
                                 predmodestring = NULL;
 
@@ -367,7 +368,7 @@ int maintemp(int argc, char **argv){
                                 free(coefficients);
                             }
                             else {
-                                if (inRow == false) {
+                                if (inRow == FALSE) {
                                     if (strstr(line, "<QP_Y>") != NULL) {
                                         char* pos1;
                                         char* pos2;
@@ -434,7 +435,7 @@ int maintemp(int argc, char **argv){
                                         allocLine = NULL;
                                     }
                                     else if (strstr(line, "<Plane type=\"0\">") != NULL) {
-                                        inRow = true;
+                                        inRow = TRUE;
                                         rowCounter = 0;
                                     }
                                 }
@@ -479,13 +480,13 @@ int maintemp(int argc, char **argv){
                                         allocLine = NULL;
                                     }
                                     else {
-                                        boolean allZeroCoeff = 0;
+                                        Boolean allZeroCoeff = 0;
                                         allZeroCoeff = check_all_zeroes(coefficients);
 
                                         // If coefficients are *not* all zeros
                                         // and skipFlag is *not* set then
                                         // call the "no_psnr_estimation" function
-                                        if ((allZeroCoeff == false) && (skipflag == 0)) {
+                                        if ((allZeroCoeff == FALSE) && (skipflag == 0)) {
                                             no_psnr_calculation(&results_list, coefficients, qp, predmodestring, typeval);
                                         }
                                         // If one of the previous conditions
@@ -502,7 +503,7 @@ int maintemp(int argc, char **argv){
                                             // TODO: 'else' branch
                                             if (DEBUG) printf("PIC: %d MB: %d skipped, skipflag = 1.\n", pic_id, mbcnt);
                                         }
-                                        inRow = false;
+                                        inRow = FALSE;
                                     }
                                 }
                             }
@@ -587,7 +588,7 @@ void mse_prediction (float skipRate, resultsList** results_list, mseRefRes mseRe
     else {
         // Calculate average of the preceeding non-skipped MBs.
         while (current != NULL) {
-            if (current->predicted == false ) {
+            if (current->predicted == FALSE ) {
                 sumBeta += current->mseBeta;
                 sumLambda += current->mseLambda;
                 cnt++;
@@ -620,23 +621,23 @@ void mse_prediction (float skipRate, resultsList** results_list, mseRefRes mseRe
         printf("[LAMBDA]-> Estimated MSE: %f, estimated PSNR: %f\n", estimatedMseLambda, estimatedpsnrLambda);
     }
 
-    // Passing "true" as last argument so that the 'predicted' variable is
+    // Passing "TRUE" as last argument so that the 'predicted' variable is
     // correctly set.
-    insertResultsList(results_list, estimatedMseBeta, estimatedMseLambda, estimatedpsnrBeta, estimatedpsnrLambda, true);
+    insertResultsList(results_list, estimatedMseBeta, estimatedMseLambda, estimatedpsnrBeta, estimatedpsnrLambda, TRUE);
 }
 
 // Function to check if all quantized coefficients are set to zero.
-// Return a boolean value: true for all zeroes, false otherwise. 
-boolean check_all_zeroes (int** coefficients) {
+// Return a Boolean value: TRUE for all zeroes, FALSE otherwise. 
+Boolean check_all_zeroes (int** coefficients) {
     int i = 0, j = 0; 
     for (i=0; i<COEFFICIENTS; i++) {
         for (j=0; j<COEFFICIENTS; j++) {
             if (coefficients[i][j] != 0) {
-                return false;
+                return FALSE;
             }
         }
     }
-    return true;
+    return TRUE;
 }
 
 /*** NO Reference psnr Estimation ***/
@@ -704,7 +705,9 @@ int no_psnr_calculation (resultsList** results_list, int** coefficients, int qp,
     }
 
     // Retrieve beta from the cauchy distribution calculation
+#if USE_CAUCHY_MODEL
     beta = cauchy_distribution(a1, b1, zeroCounter, oneCounter, qk, alpha);
+#endif
     lambda_laplace = laplace_distribution(b1, zeroCounter, oneCounter, qk, alpha);
 
     // Print
@@ -732,11 +735,13 @@ int no_psnr_calculation (resultsList** results_list, int** coefficients, int qp,
 
             cf = fabs(cf);
 
+#if USE_CAUCHY_MODEL
             // Calculating integral 
             numIntegralFirstBeta = (beta * ( bk - cf * log(r(beta) + r(bk))) + (r(cf) - r(beta)) * atan(bk / beta)) / M_PI;
             numIntegralSecondBeta = (beta * ( ak - cf * log(r(beta) + r(ak))) + (r(cf) - r(beta)) * atan(ak / beta)) / M_PI; 
             denumIntegralBeta = (atan(bk / beta) - (atan(ak / beta))) / M_PI;
             sumEpsilonSquaredBeta += ((numIntegralFirstBeta - numIntegralSecondBeta) / denumIntegralBeta);
+#endif
 
             //Using LAMBDA from the LaPlace model
             numIntegralFirstLambda = exp(lambda_laplace* (-1) * bk) * (( lambda_laplace * (cf - bk) * ((lambda_laplace* bk) - (lambda_laplace * cf) + 2)) - 2);
@@ -748,24 +753,28 @@ int no_psnr_calculation (resultsList** results_list, int** coefficients, int qp,
         }
     }
 
+#if USE_CAUCHY_MODEL
     // MSEBeta (4)
     mseBeta = sumEpsilonSquaredBeta / totCntr;
-    if (DEBUG) printf("MSE(Beta): %.8lf\n", mseBeta);
+    if (DEBUG || 1) printf("MSE(Beta): %.8lf\n", mseBeta);
+#endif
 
     // MSELambda (4)
     mseLambda = sumEpsilonSquaredLambda / totCntr;
-    if (DEBUG) printf("MSE(Lambda): %.8lf\n", mseLambda);
+    if (DEBUG || 0) printf("MSE(Lambda): %.8lf\n", mseLambda);
 
+#if USE_CAUCHY_MODEL
     // PSNRBeta (4)
     psnrBeta = 10 * (log10(r(255) / mseBeta));
-    if (DEBUG) printf("PSNR(Beta): %.8lf\n", psnrBeta);
+    if (DEBUG || 1) printf("PSNR(Beta): %.8lf\n", psnrBeta);
+#endif
 
     // PSNRLambda (4)
     psnrLambda = 10 * (log10(r(255) / mseLambda));
-    if (DEBUG) printf("PSNR(Lambda): %.8lf\n", psnrLambda);
+    if (DEBUG || 0) printf("PSNR(Lambda): %.8lf\n", psnrLambda);
 
     // Insert results in structure 
-    insertResultsList(results_list, mseBeta, mseLambda, psnrBeta, psnrLambda, false);
+    insertResultsList(results_list, mseBeta, mseLambda, psnrBeta, psnrLambda, FALSE);
 
     /*printf("-----------------------------------------]\n");*/
     return EXIT_SUCCESS;
@@ -979,7 +988,7 @@ double calculate_qk(int qp) {
 }
 
 // Insert in list.
-void insertResultsList(resultsList** head, double mseBeta, double mseLambda, double psnrBeta, double psnrLambda, boolean predicted) {
+void insertResultsList(resultsList** head, double mseBeta, double mseLambda, double psnrBeta, double psnrLambda, Boolean predicted) {
     if (*head == NULL) {
         resultsList* newNode = malloc(sizeof(resultsList));
         newNode->mseBeta = mseBeta;

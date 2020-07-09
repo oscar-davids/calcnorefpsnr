@@ -29,7 +29,7 @@
 #endif
 
 #ifndef CALC_NOREF_PSNR
-#define CALC_NOREF_PSNR
+#define CALC_NOREF_PSNR		1
 #endif
 
 #define JM                  "16.1 (FRExt)"

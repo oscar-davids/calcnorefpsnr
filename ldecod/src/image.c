@@ -592,6 +592,60 @@ static void Error_tracking(VideoParameters *p_Vid)
   }
 }
 
+void calc_frame_psnr(VideoParameters *p_Vid)
+{
+	Slice *currSlice = p_Vid->currentSlice;
+
+	float totFrameMseBeta = 0.0;
+	float totFrameMseLambda = 0.0;
+	int totCnt = 0;
+	resultsList* results_list = currSlice->p_Psnr;
+
+	if (p_Vid->firstPic == FALSE) {
+		p_Vid->mseRef = calc_average_mse(&currSlice->p_Psnr);
+		p_Vid->firstPic = TRUE;
+	}
+
+	// Print if the array contains something
+	if (results_list != NULL) {
+
+		resultsList* cursor = results_list;
+		while (cursor != NULL) {
+			totFrameMseBeta += cursor->mseBeta;
+			totFrameMseLambda += cursor->mseLambda;
+			totCnt++;
+
+			if (cursor->next == NULL) {
+				totFrameMseBeta += cursor->mseBeta;
+				totFrameMseLambda += cursor->mseLambda;
+				totCnt++;
+				break;
+			}
+			cursor = cursor->next;
+		}
+
+		totFrameMseBeta /= totCnt;
+		totFrameMseLambda /= totCnt;
+		
+		float psnrFrameBeta = 1000.0;
+		if (p_Vid->mseRef.mseBetaRef > 0.0) {
+			psnrFrameBeta = 10.0 * log10(255.0*255.0 / totFrameMseBeta);
+		}
+		float psnrFrameLambda = 1000.0;
+		if (p_Vid->mseRef.mseLambdaRef > 0.0) {
+			psnrFrameLambda = 10.0 * log10(255.0*255.0 / totFrameMseLambda);
+		}
+
+		fprintf(stdout, " totFrameMseBeta	: %lf \n", totFrameMseBeta);
+		fprintf(stdout, " totFrameMseLambda : %lf \n", totFrameMseLambda);
+		fprintf(stdout, " psnrFrameBeta		: %lf \n", psnrFrameBeta);
+		fprintf(stdout, " psnrFrameLambda	: %lf \n", psnrFrameLambda);		
+
+		// Free and reset.  
+		freeResultsList(currSlice->p_Psnr);
+		currSlice->p_Psnr = NULL;
+	}
+}
 /*!
  ***********************************************************************
  * \brief
@@ -603,31 +657,36 @@ static void Error_tracking(VideoParameters *p_Vid)
 int decode_one_frame(VideoParameters *p_Vid)
 {
 
-  InputParameters *p_Inp = p_Vid->p_Inp;
+	  InputParameters *p_Inp = p_Vid->p_Inp;
 
-  //SNRParameters   *snr   = p_Vid->snr;
-  int current_header;
-  Slice *currSlice = p_Vid->currentSlice;
-  int i;
+	  //SNRParameters   *snr   = p_Vid->snr;
+	  int current_header;
+	  Slice *currSlice = p_Vid->currentSlice;
+	  int i;
 
-  currSlice->p_Vid = p_Vid;
-  currSlice->p_Inp = p_Inp;
-  p_Vid->current_slice_nr = 0;
-  p_Vid->current_mb_nr = -4711;     // initialized to an impossible value for debugging -- correct value is taken from slice header
-  currSlice->next_header = -8888; // initialized to an impossible value for debugging -- correct value is taken from slice header
-  p_Vid->num_dec_mb = 0;
-  p_Vid->newframe = 1;
-  //currSlice->coeff[64]; // one more for EOB
-  currSlice->coeff_ctr = -1;
-  currSlice->pos       =  0;
+	  currSlice->p_Vid = p_Vid;
+	  currSlice->p_Inp = p_Inp;
+	  p_Vid->current_slice_nr = 0;
+	  p_Vid->current_mb_nr = -4711;     // initialized to an impossible value for debugging -- correct value is taken from slice header
+	  currSlice->next_header = -8888; // initialized to an impossible value for debugging -- correct value is taken from slice header
+	  p_Vid->num_dec_mb = 0;
+	  p_Vid->newframe = 1;
+	  //currSlice->coeff[64]; // one more for EOB
+	  currSlice->coeff_ctr = -1;
+	  currSlice->pos       =  0;
+
+	#if CALC_NOREF_PSNR
+	  currSlice->p_Psnr = NULL;  
+	  p_Vid->skipCnt = 0;
+	#endif
 
 
-  while ((currSlice->next_header != EOS && currSlice->next_header != SOP))
-  {
-    current_header = read_new_slice(p_Vid->currentSlice);
+	  while ((currSlice->next_header != EOS && currSlice->next_header != SOP))
+	  {
+		current_header = read_new_slice(p_Vid->currentSlice);
 
-    // error tracking of primary and redundant slices.
-    Error_tracking(p_Vid);
+		// error tracking of primary and redundant slices.
+		Error_tracking(p_Vid);
 
 		/***** XML_TRACE_BEGIN *****/
 		if(xml_gen_trace_file())
@@ -670,57 +729,61 @@ int decode_one_frame(VideoParameters *p_Vid)
 		}
 		/****** XML_TRACE_END ******/
 
-    // If primary and redundant are received and primary is correct, discard the redundant
-    // else, primary slice will be replaced with redundant slice.
-    if(p_Vid->frame_num == p_Vid->previous_frame_num && p_Vid->redundant_pic_cnt !=0
-      && p_Vid->Is_primary_correct !=0 && current_header != EOS)
-    {
-      continue;
-    }
-
-    // update reference flags and set current p_Vid->ref_flag
-    if(!(p_Vid->redundant_pic_cnt != 0 && p_Vid->previous_frame_num == p_Vid->frame_num))
-    {
-      for(i=16;i>0;i--)
-      {
-        p_Vid->ref_flag[i] = p_Vid->ref_flag[i-1];
-      }
-    }
-    p_Vid->ref_flag[0] = p_Vid->redundant_pic_cnt==0 ? p_Vid->Is_primary_correct : p_Vid->Is_redundant_correct;
-    p_Vid->previous_frame_num = p_Vid->frame_num;
-
-    if (current_header == EOS)
-    {
-      exit_picture(p_Vid, &p_Vid->dec_picture);
-
-		/***** XML_TRACE_BEGIN *****/
-		if(xml_gen_trace_file())
+		// If primary and redundant are received and primary is correct, discard the redundant
+		// else, primary slice will be replaced with redundant slice.
+		if(p_Vid->frame_num == p_Vid->previous_frame_num && p_Vid->redundant_pic_cnt !=0
+		  && p_Vid->Is_primary_correct !=0 && current_header != EOS)
 		{
-			xml_check_and_write_end_element("SubPicture");
-			xml_check_and_write_end_element("Picture");
+		  continue;
 		}
-		/****** XML_TRACE_END *****/
-      return EOS;
-    }
 
-    if((p_Vid->active_sps->chroma_format_idc==0)||(p_Vid->active_sps->chroma_format_idc==3))
-    {
-      currSlice->linfo_cbp_intra = linfo_cbp_intra_other;
-      currSlice->linfo_cbp_inter = linfo_cbp_inter_other;
-    }
-    else
-    {
-      currSlice->linfo_cbp_intra = linfo_cbp_intra_normal;
-      currSlice->linfo_cbp_inter = linfo_cbp_inter_normal;
-    }
+		// update reference flags and set current p_Vid->ref_flag
+		if(!(p_Vid->redundant_pic_cnt != 0 && p_Vid->previous_frame_num == p_Vid->frame_num))
+		{
+		  for(i=16;i>0;i--)
+		  {
+			p_Vid->ref_flag[i] = p_Vid->ref_flag[i-1];
+		  }
+		}
+		p_Vid->ref_flag[0] = p_Vid->redundant_pic_cnt==0 ? p_Vid->Is_primary_correct : p_Vid->Is_redundant_correct;
+		p_Vid->previous_frame_num = p_Vid->frame_num;
 
-    decode_slice(currSlice, current_header);
+		if (current_header == EOS)
+		{
+		  exit_picture(p_Vid, &p_Vid->dec_picture);
 
-    p_Vid->newframe = 0;
-    ++(p_Vid->current_slice_nr);
-  }
+			/***** XML_TRACE_BEGIN *****/
+			if(xml_gen_trace_file())
+			{
+				xml_check_and_write_end_element("SubPicture");
+				xml_check_and_write_end_element("Picture");
+			}
+			/****** XML_TRACE_END *****/
+#if CALC_NOREF_PSNR		  
+			calc_frame_psnr(p_Vid);
+#endif
 
-  exit_picture(p_Vid, &p_Vid->dec_picture);
+		  return EOS;
+		}
+
+		if((p_Vid->active_sps->chroma_format_idc==0)||(p_Vid->active_sps->chroma_format_idc==3))
+		{
+		  currSlice->linfo_cbp_intra = linfo_cbp_intra_other;
+		  currSlice->linfo_cbp_inter = linfo_cbp_inter_other;
+		}
+		else
+		{
+		  currSlice->linfo_cbp_intra = linfo_cbp_intra_normal;
+		  currSlice->linfo_cbp_inter = linfo_cbp_inter_normal;
+		}
+
+		decode_slice(currSlice, current_header);
+
+		p_Vid->newframe = 0;
+		++(p_Vid->current_slice_nr);
+	  }
+
+	exit_picture(p_Vid, &p_Vid->dec_picture);
 
 	/***** XML_TRACE_BEGIN *****/
 	if(xml_gen_trace_file())
@@ -729,8 +792,11 @@ int decode_one_frame(VideoParameters *p_Vid)
 		xml_check_and_write_end_element("Picture");
 	}
 	/****** XML_TRACE_END *****/
+#if CALC_NOREF_PSNR		  
+	calc_frame_psnr(p_Vid);
+#endif
 
-  return (SOP);
+	return (SOP);
 }
 
 
@@ -2061,7 +2127,32 @@ void copy_dec_picture_JV( VideoParameters *p_Vid, StorablePicture *dst, Storable
   }
 #endif
 }
+Boolean check_zeroes(Macroblock* currMB, Slice* currSlice)
+{
+	if (currMB->luma_transform_size_8x8_flag)
+	{
+		return check_all_zeroes(currSlice->mb_rres[0]);		
+	}
+	else
+	{
+		return check_all_zeroes(currSlice->cof[0]);
+	}
+}
 
+void calc_noref_psnr(Macroblock* currMB, Slice* currSlice)
+{
+	char predmodstring[255];
+	getpredmodstring(currMB, currSlice, predmodstring);	
+
+	if (currMB->luma_transform_size_8x8_flag)
+	{
+		no_psnr_calculation(&currSlice->p_Psnr, currSlice->mb_rres[0], currMB->qp, predmodstring , 0);
+	}
+	else
+	{
+		no_psnr_calculation(&currSlice->p_Psnr, currSlice->cof[0], currMB->qp, predmodstring, 0);
+	}
+}
 
 /*!
  ************************************************************************
@@ -2113,6 +2204,11 @@ void decode_one_slice(Slice *currSlice)
   }
 
   //reset_ec_flags(p_Vid);
+  int mbcnt = 0;
+  int skipCnt = 0;
+  mseRefRes mseRef;
+  mseRef.mseBetaRef = 0;
+  mseRef.mseLambdaRef = 0;
 
   while (end_of_slice == FALSE) // loop over macroblocks
   {
@@ -2167,12 +2263,37 @@ void decode_one_slice(Slice *currSlice)
 
     end_of_slice = exit_macroblock(currSlice, (!currSlice->mb_aff_frame_flag||p_Vid->current_mb_nr%2));
 
-		/***** XML_TRACE_BEGIN *****/
-		if(xml_gen_trace_file()  && xml_get_log_level() >= 1)
-		{
-			xml_write_end_element();
+	/***** XML_TRACE_BEGIN *****/
+	if(xml_gen_trace_file()  && xml_get_log_level() >= 1)
+	{
+		xml_write_end_element();
+	}
+	/****** XML_TRACE_END ******/
+	Boolean allZeroCoeff = 0;
+	allZeroCoeff = check_zeroes(currMB, currSlice);
+
+	// If coefficients are *not* all zeros
+	// and skipFlag is *not* set then
+	// call the "no_psnr_estimation" function
+	if ((allZeroCoeff == FALSE) && (currMB->skip_flag == 0)) {
+		calc_noref_psnr(currMB, currSlice);
+	}
+	// If one of the previous conditions
+	// does not hold, call mse_prediction
+	else {
+		float skipRate = .0;
+		skipCnt++;
+
+		if (mbcnt > 0) {
+			skipRate = (float)skipCnt / (float)mbcnt;
+			// Call the prediction function
+			mse_prediction(skipRate, &currSlice->p_Psnr, p_Vid->mseRef);
 		}
-		/****** XML_TRACE_END ******/
+		// TODO: 'else' branch
+		//if (DEBUG) printf("PIC: %d MB: %d skipped, skipflag = 1.\n", pic_id, mbcnt);
+	}
+	mbcnt++;
+
   }
 
   exit_slice(currSlice, p_Vid->old_slice);

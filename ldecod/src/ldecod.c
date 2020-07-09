@@ -612,7 +612,11 @@ static void init(VideoParameters *p_Vid)  //!< video parameters
 #if (ENABLE_OUTPUT_TONEMAPPING)
   init_tone_mapping_sei(p_Vid->seiToneMapping);
 #endif
-
+#if CALC_NOREF_PSNR
+  p_Vid->firstPic = FALSE;
+  p_Vid->mseRef.mseBetaRef = 0;
+  p_Vid->mseRef.mseLambdaRef = 0;
+#endif
 }
 
 /*!
