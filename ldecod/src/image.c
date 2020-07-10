@@ -600,6 +600,7 @@ void calc_frame_psnr(VideoParameters *p_Vid)
 	float totFrameMseLambda = 0.0;
 	int totCnt = 0;
 	resultsList* results_list = currSlice->p_Psnr;
+	if (results_list == NULL) return;
 
 	if (p_Vid->firstPic == FALSE) {
 		p_Vid->mseRef = calc_average_mse(&currSlice->p_Psnr);
@@ -636,9 +637,9 @@ void calc_frame_psnr(VideoParameters *p_Vid)
 			psnrFrameLambda = 10.0 * log10(255.0*255.0 / totFrameMseLambda);
 		}
 
-		fprintf(stdout, " totFrameMseBeta	: %lf \n", totFrameMseBeta);
-		fprintf(stdout, " totFrameMseLambda : %lf \n", totFrameMseLambda);
-		fprintf(stdout, " psnrFrameBeta		: %lf \n", psnrFrameBeta);
+		//fprintf(stdout, " totFrameMseBeta	: %lf \n", totFrameMseBeta);
+		//fprintf(stdout, " totFrameMseLambda : %lf \n", totFrameMseLambda);
+		//fprintf(stdout, " psnrFrameBeta		: %lf \n", psnrFrameBeta);
 		fprintf(stdout, " psnrFrameLambda	: %lf \n", psnrFrameLambda);		
 
 		// Free and reset.  
@@ -728,7 +729,18 @@ int decode_one_frame(VideoParameters *p_Vid)
 			}
 		}
 		/****** XML_TRACE_END ******/
-
+#if CALC_NOREF_PSNR		  
+		if (is_new_picture(p_Vid->dec_picture, currSlice, p_Vid->old_slice))
+		{
+			//Check whether this is really a new picture (or just a new field, in case of interlaced content)
+			if (p_Vid->structure == FRAME || p_Vid->structure == TOP_FIELD ||
+				(p_Vid->structure == BOTTOM_FIELD && p_Vid->p_Dpb->last_picture->top_field == NULL))
+			{
+				//Check if the previous tag must be closed
+				calc_frame_psnr(p_Vid);
+			}
+		}
+#endif
 		// If primary and redundant are received and primary is correct, discard the redundant
 		// else, primary slice will be replaced with redundant slice.
 		if(p_Vid->frame_num == p_Vid->previous_frame_num && p_Vid->redundant_pic_cnt !=0

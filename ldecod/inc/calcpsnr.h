@@ -74,7 +74,7 @@ typedef struct {
 // Total number (square matrix)
 #define TOTAL_COEFFICIENTS COEFFICIENTS * COEFFICIENTS
 // Number of iterations in the Newton approximation
-#define LIMIT_NEWTON_ITERATIONS 1000
+#define LIMIT_NEWTON_ITERATIONS 100
 // Starting value is 0.1. See (11)
 #define BETA_START 0.1 
 // Seeing the practical results, lambda starts with a lower value
