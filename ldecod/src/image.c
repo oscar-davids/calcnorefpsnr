@@ -616,12 +616,6 @@ void calc_frame_psnr(VideoParameters *p_Vid)
 			totFrameMseLambda += cursor->mseLambda;
 			totCnt++;
 
-			if (cursor->next == NULL) {
-				totFrameMseBeta += cursor->mseBeta;
-				totFrameMseLambda += cursor->mseLambda;
-				totCnt++;
-				break;
-			}
 			cursor = cursor->next;
 		}
 
@@ -645,6 +639,9 @@ void calc_frame_psnr(VideoParameters *p_Vid)
 		// Free and reset.  
 		freeResultsList(currSlice->p_Psnr);
 		currSlice->p_Psnr = NULL;
+
+
+		insertResultsList(&p_Vid->p_tPsnr, 0, totFrameMseLambda, 0, psnrFrameLambda, FALSE);
 	}
 }
 /*!
@@ -677,7 +674,7 @@ int decode_one_frame(VideoParameters *p_Vid)
 	  currSlice->pos       =  0;
 
 	#if CALC_NOREF_PSNR
-	  currSlice->p_Psnr = NULL;  
+	  currSlice->p_Psnr = NULL;
 	  p_Vid->skipCnt = 0;
 	#endif
 
@@ -1790,6 +1787,7 @@ void exit_picture(VideoParameters *p_Vid, StorablePicture **dec_picture)
     p_Vid->tot_time += tmp_time;
     tmp_time  = timenorm(tmp_time);
 
+#if (DEBUG)
     sprintf(yuvFormat,"%s", yuv_types[chroma_format_idc]);
 
     if (p_Inp->silent == FALSE)
@@ -1802,10 +1800,12 @@ void exit_picture(VideoParameters *p_Vid, StorablePicture **dec_picture)
         fprintf(stdout,"%05d(%s%5d %5d %5d                             %s %7d\n",
         p_Vid->frame_no, p_Vid->cslice_type, frame_poc, pic_num, qp, yuvFormat, (int)tmp_time);
     }
+
     else
       fprintf(stdout,"Completed Decoding frame %05d.\r",snr->frame_ctr);
 
     fflush(stdout);
+#endif
 
     if(slice_type == I_SLICE || slice_type == SI_SLICE || slice_type == P_SLICE || refpic)   // I or P pictures
       ++(p_Vid->number);

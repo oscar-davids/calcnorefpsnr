@@ -449,6 +449,7 @@ typedef struct video_par
   mseRefRes			mseRef;
   int				skipCnt;
   Boolean			firstPic;
+  float				fvpsnr; // video psnr
 #endif
 
   pic_parameter_set_rbsp_t *active_pps;

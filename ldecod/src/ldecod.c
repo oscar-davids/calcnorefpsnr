@@ -284,19 +284,27 @@ static void Configure(VideoParameters *p_Vid, InputParameters *p_Inp, int ac, ch
   }
 #endif
 
+  /*
   if ((p_Vid->p_out = open(p_Inp->outfile, OPENFLAGS_WRITE, OPEN_PERMISSIONS))==-1)
   {
     snprintf(errortext, ET_SIZE, "Error open file %s ",p_Inp->outfile);
     error(errortext,500);
   }
+  */
 
-  fprintf(stdout,"----------------------------- JM %s %s -----------------------------\n", VERSION, EXT_VERSION);
-  fprintf(stdout," Decoder config file                    : %s \n",config_filename);
-  fprintf(stdout,"--------------------------------------------------------------------------\n");
-  fprintf(stdout," Input H.264 bitstream                  : %s \n",p_Inp->infile);
-  fprintf(stdout," Output decoded YUV                     : %s \n",p_Inp->outfile);
-  fprintf(stdout," Output status file                     : %s \n",LOGFILE);
+  //p_Vid->p_ref = open(p_Inp->reffile, OPENFLAGS_READ) == -1;
+  //xml_gen_trace_file();
 
+  p_Vid->p_ref = -1;
+
+#ifdef USELOG
+
+  fprintf(stdout, "----------------------------- JM %s %s -----------------------------\n", VERSION, EXT_VERSION);
+  fprintf(stdout, " Decoder config file                    : %s \n", config_filename);
+  fprintf(stdout, "--------------------------------------------------------------------------\n");
+  fprintf(stdout, " Input H.264 bitstream                  : %s \n", p_Inp->infile);
+  fprintf(stdout, " Output decoded YUV                     : %s \n", p_Inp->outfile);
+  fprintf(stdout, " Output status file                     : %s \n", LOGFILE);
 
   if ((p_Vid->p_ref = open(p_Inp->reffile,OPENFLAGS_READ))==-1)
   {
@@ -330,6 +338,8 @@ static void Configure(VideoParameters *p_Vid, InputParameters *p_Inp, int ac, ch
     fprintf(stdout,"  Frame          POC  Pic#   QP    SnrY     SnrU     SnrV   Y:U:V Time(ms)\n");
     fprintf(stdout,"--------------------------------------------------------------------------\n");
   }
+
+#endif
 
 }
 
@@ -449,6 +459,158 @@ static void free_img( VideoParameters *p_Vid)
     p_Vid = NULL;
   }
 }
+
+void calc_total_psnr(VideoParameters *p_Vid)
+{
+	
+	if (p_Vid == NULL) return;
+
+	float totFrameMseBeta = 0.0;
+	float totFrameMseLambda = 0.0;
+	float totpsnrFrameLambda = 0.0;
+	int totCnt = 0;
+	resultsList* results_list = p_Vid->p_tPsnr;
+	if (results_list == NULL) return;
+
+	// Print if the array contains something
+	double mseBeta;
+	double psnrBeta;
+	double mseLambda;
+	double psnrLambda;
+
+	if (results_list != NULL) {
+
+		resultsList* cursor = results_list;
+
+		while (cursor != NULL) {
+			totFrameMseBeta += cursor->mseBeta;
+			totFrameMseLambda += cursor->mseLambda;
+			totpsnrFrameLambda += cursor->psnrLambda;
+			totCnt++;
+			
+			cursor = cursor->next;
+		}
+
+		totFrameMseBeta /= totCnt;
+		totFrameMseLambda /= totCnt;
+		totpsnrFrameLambda /= totCnt;
+
+
+		//fprintf(stdout, " totFrameMseBeta	: %lf \n", totFrameMseBeta);
+		//fprintf(stdout, " totFrameMseLambda : %lf \n", totFrameMseLambda);
+		//fprintf(stdout, " psnrFrameBeta		: %lf \n", psnrFrameBeta);
+		fprintf(stdout, " psnrTotalLambda	: %lf \n", totpsnrFrameLambda);
+
+		p_Vid->fvpsnr = totpsnrFrameLambda;
+		// Free and reset.  
+		freeResultsList(p_Vid->p_tPsnr);
+		p_Vid->p_tPsnr = NULL;
+	}
+}
+
+float calc_norefpsnr(char* vpath)
+{
+	float fpsnr = 0.0;
+	if (vpath == NULL) return fpsnr;
+
+	alloc_decoder(&p_Dec);
+
+	InputParameters   *p_Inp = p_Dec->p_Inp;
+
+	p_Dec->p_Vid->p_Inp = p_Inp;
+
+	strcpy(p_Inp->infile, vpath);      //! set default bitstream name
+	strcpy(p_Inp->outfile, "test_dec.yuv"); //! set default output file name
+	strcpy(p_Inp->reffile, "test_rec.yuv"); //! set default reference file name	
+
+	p_Inp->FileFormat = PAR_OF_ANNEXB;
+	p_Inp->ref_offset = 0;
+	p_Inp->poc_scale = 2;
+	p_Inp->silent = FALSE;
+	p_Inp->intra_profile_deblocking = 0;
+
+
+	p_Dec->p_Vid->p_ref = -1;
+
+
+	initBitsFile(p_Dec->p_Vid, p_Dec->p_Inp->FileFormat);
+
+	p_Dec->p_Vid->bitsfile->OpenBitsFile(p_Dec->p_Vid, p_Dec->p_Inp->infile);
+
+	// Allocate Slice data struct
+	malloc_slice(p_Dec->p_Inp, p_Dec->p_Vid);
+	init_old_slice(p_Dec->p_Vid->old_slice);
+
+	init(p_Dec->p_Vid);
+
+	init_out_buffer(p_Dec->p_Vid);
+
+	while (decode_one_frame(p_Dec->p_Vid) != EOS)
+		;
+
+	calc_total_psnr(p_Dec->p_Vid);
+
+	fpsnr = p_Dec->p_Vid->fvpsnr;
+
+	// YD: begin
+	//Report(p_Dec->p_Vid);
+	//free_slice(p_Dec->p_Vid->currentSlice);
+	// YD: end
+	FmoFinit(p_Dec->p_Vid);
+
+	// YD: begin
+	//free_global_buffers(p_Dec->p_Vid);
+	// YD: end
+	flush_dpb(p_Dec->p_Vid);
+
+	// YD: begin
+	// only free buffers after everything is send to the output
+	free_slice(p_Dec->p_Vid->currentSlice);
+	free_global_buffers(p_Dec->p_Vid);
+
+	// only show the final report after all buffers have been emptied
+#ifdef USELOG
+	Report(p_Dec->p_Vid);
+#endif 
+
+	// YD: end
+
+#if (PAIR_FIELDS_IN_OUTPUT)
+	flush_pending_output(p_Dec->p_Vid, p_Dec->p_Vid->p_out);
+#endif
+
+	p_Dec->p_Vid->bitsfile->CloseBitsFile(p_Dec->p_Vid);
+
+	/***** XML_TRACE_BEGIN *****/
+	if (xml_gen_trace_file())
+	{
+		xml_write_end_element();
+		xml_close_trace_file();
+	}
+	/****** XML_TRACE_END ******/
+
+	//close(p_Dec->p_Vid->p_out);
+
+	if (p_Dec->p_Vid->p_ref != -1)
+		close(p_Dec->p_Vid->p_ref);
+
+#if TRACE
+	fclose(p_Dec->p_trace);
+#endif
+
+	ercClose(p_Dec->p_Vid, p_Dec->p_Vid->erc_errorVar);
+
+	CleanUpPPS(p_Dec->p_Vid);
+	free_dpb(p_Dec->p_Vid);
+	uninit_out_buffer(p_Dec->p_Vid);
+
+	free(p_Dec->p_Inp);
+	free_img(p_Dec->p_Vid);
+	free(p_Dec);
+
+
+	return fpsnr;
+}
 /*!
  ***********************************************************************
  * \brief
@@ -457,6 +619,9 @@ static void free_img( VideoParameters *p_Vid)
  */
 int main(int argc, char **argv)
 {  
+
+	calc_norefpsnr(argv[2]);
+
   alloc_decoder(&p_Dec);
 
   Configure (p_Dec->p_Vid, p_Dec->p_Inp, argc, argv);
@@ -498,6 +663,8 @@ int main(int argc, char **argv)
   while (decode_one_frame(p_Dec->p_Vid) != EOS)
     ;
 
+  calc_total_psnr(p_Dec->p_Vid);
+
   // YD: begin
   //Report(p_Dec->p_Vid);
   //free_slice(p_Dec->p_Vid->currentSlice);
@@ -515,7 +682,10 @@ int main(int argc, char **argv)
   free_global_buffers(p_Dec->p_Vid);
   
   // only show the final report after all buffers have been emptied
+#ifdef USELOG
   Report(p_Dec->p_Vid);
+#endif 
+  
   // YD: end
 
 #if (PAIR_FIELDS_IN_OUTPUT)
@@ -532,7 +702,7 @@ int main(int argc, char **argv)
   }
   /****** XML_TRACE_END ******/
 
-  close(p_Dec->p_Vid->p_out);
+  //close(p_Dec->p_Vid->p_out);
 
   if (p_Dec->p_Vid->p_ref != -1)
     close(p_Dec->p_Vid->p_ref);
@@ -616,6 +786,7 @@ static void init(VideoParameters *p_Vid)  //!< video parameters
   p_Vid->firstPic = FALSE;
   p_Vid->mseRef.mseBetaRef = 0;
   p_Vid->mseRef.mseLambdaRef = 0;
+  p_Vid->fvpsnr = 0.0;
 #endif
 }
 
@@ -912,6 +1083,7 @@ static void Report(VideoParameters *p_Vid)
     fprintf(stdout,"\n");
   }
 
+#ifdef USELOG
   // write to log file
 
   snprintf(string, OUTSTRING_SIZE, "%s", LOGFILE);
@@ -1024,6 +1196,7 @@ static void Report(VideoParameters *p_Vid)
       (double)0.001*p_Vid->tot_time/p_Vid->number);
   }
   fclose(p_log);
+#endif
 }
 
 /*!
