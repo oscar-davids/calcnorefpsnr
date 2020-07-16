@@ -50,7 +50,7 @@ typedef struct anotherList{
     double psnrBeta;
     double mseLambda;
     double psnrLambda;
-    boolean predicted;
+    Boolean predicted;
     struct anotherList* next;
 } resultsList;
 

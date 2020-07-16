@@ -28,7 +28,7 @@
  *     H.264/AVC reference decoder project main()
  *  \author
  *     Main contributors (see contributors.h for copyright, address and affiliation details)
- *     - Inge Lille-Langøy       <inge.lille-langoy@telenor.com>
+ *     - Inge Lille-Langï¿½y       <inge.lille-langoy@telenor.com>
  *     - Rickard Sjoberg         <rickard.sjoberg@era.ericsson.se>
  *     - Stephan Wenger          <stewe@cs.tu-berlin.de>
  *     - Jani Lainema            <jani.lainema@nokia.com>
@@ -75,7 +75,7 @@
 
 // Decoder definition. This should be the only global variable in the entire
 // software. Global variables should be avoided.
-DecoderParams  *p_Dec = NULL;
+DecoderParams  *p_Dec = 0;
 
 // Prototypes of static functions
 static void init_conf   (VideoParameters *p_Vid, InputParameters *p_Inp, char *config_filename);
@@ -466,9 +466,9 @@ void calc_total_psnr(VideoParameters *p_Vid)
 	
 	if (p_Vid == NULL) return;
 
-	float totFrameMseBeta = 0.0;
-	float totFrameMseLambda = 0.0;
-	float totpsnrFrameLambda = 0.0;
+	double totFrameMseBeta = 0.0;
+	double totFrameMseLambda = 0.0;
+	double totpsnrFrameLambda = 0.0;
 	int totCnt = 0;
 	resultsList* results_list = p_Vid->p_tPsnr;
 	if (results_list == NULL) return;
@@ -502,7 +502,7 @@ void calc_total_psnr(VideoParameters *p_Vid)
 		//fprintf(stdout, " psnrFrameBeta		: %lf \n", psnrFrameBeta);
 		fprintf(stdout, " psnrTotalLambda	: %lf \n", totpsnrFrameLambda);
 
-		p_Vid->fvpsnr = totpsnrFrameLambda;
+		p_Vid->fvpsnr = (float)totpsnrFrameLambda;
 		// Free and reset.  
 		freeResultsList(p_Vid->p_tPsnr);
 		p_Vid->p_tPsnr = NULL;
@@ -616,6 +616,7 @@ float calc_norefpsnr(char* vpath)
 	return fpsnr;
 }
 #ifndef _WINDLL
+#if BUILDEXE
 /*!
  ***********************************************************************
  * \brief
@@ -623,112 +624,16 @@ float calc_norefpsnr(char* vpath)
  ***********************************************************************
  */
 int main(int argc, char **argv)
-{  
+{
+  if(argc != 2) {
+    printf("invalid argument: ex ./execute test.h264\n");
+    return 0;
+  }
+	float fpsnr = calc_norefpsnr(argv[1]);
+  printf("noref  psnr: %lf \n", fpsnr);
 
-	calc_norefpsnr(argv[2]);
-
-	alloc_decoder(&p_Dec);
-
-	Configure (p_Dec->p_Vid, p_Dec->p_Inp, argc, argv);
-
-	initBitsFile(p_Dec->p_Vid, p_Dec->p_Inp->FileFormat);
-
-	p_Dec->p_Vid->bitsfile->OpenBitsFile(p_Dec->p_Vid, p_Dec->p_Inp->infile);
-  
-	// Allocate Slice data struct
-	malloc_slice(p_Dec->p_Inp, p_Dec->p_Vid);
-	init_old_slice(p_Dec->p_Vid->old_slice);
-
-	/***** XML_TRACE_BEGIN *****/
-	if(xml_gen_trace_file())
-	{
-	switch(xml_open_trace_file())
-	{
-		case -2: 
-			printf ("No filename specified for the XML trace file!\n");
-			exit(-200);
-			break;
-		case -1: 
-			printf ("An error has occurred while trying to create the XML tracefile '%s'!\n", xml_get_trace_filename());
-			exit(-100);
-			break;
-		default:
-			break;
-	}
-
-	xml_write_start_element("AVCTrace");
-	xml_write_string_attribute("version", XML_TRACE_VERSION);
-	}
-	/****** XML_TRACE_END ******/
-
-	init(p_Dec->p_Vid);
- 
-	init_out_buffer(p_Dec->p_Vid);  
-
-	while (decode_one_frame(p_Dec->p_Vid) != EOS)
-	;
-
-	calc_total_psnr(p_Dec->p_Vid);
-
-	// YD: begin
-	//Report(p_Dec->p_Vid);
-	//free_slice(p_Dec->p_Vid->currentSlice);
-	// YD: end
-	FmoFinit(p_Dec->p_Vid);
-
-	// YD: begin
-	//free_global_buffers(p_Dec->p_Vid);
-	// YD: end
-	flush_dpb(p_Dec->p_Vid);
-
-	// YD: begin
-	// only free buffers after everything is send to the output
-	free_slice(p_Dec->p_Vid->currentSlice);
-	free_global_buffers(p_Dec->p_Vid);
-  
-	// only show the final report after all buffers have been emptied
-	#ifdef USELOG
-	Report(p_Dec->p_Vid);
-	#endif 
-  
-	// YD: end
-
-	#if (PAIR_FIELDS_IN_OUTPUT)
-	flush_pending_output(p_Dec->p_Vid, p_Dec->p_Vid->p_out);
-	#endif
-
-	p_Dec->p_Vid->bitsfile->CloseBitsFile(p_Dec->p_Vid);
-
-	/***** XML_TRACE_BEGIN *****/
-	if(xml_gen_trace_file())
-	{
-		xml_write_end_element();
-		xml_close_trace_file();
-	}
-	/****** XML_TRACE_END ******/
-
-	//close(p_Dec->p_Vid->p_out);
-
-	if (p_Dec->p_Vid->p_ref != -1)
-	close(p_Dec->p_Vid->p_ref);
-
-	#if TRACE
-	fclose(p_Dec->p_trace);
-	#endif
-
-	ercClose(p_Dec->p_Vid, p_Dec->p_Vid->erc_errorVar);
-
-	CleanUpPPS(p_Dec->p_Vid);
-	free_dpb(p_Dec->p_Vid);
-	uninit_out_buffer(p_Dec->p_Vid);
-
-	free (p_Dec->p_Inp);
-	free_img (p_Dec->p_Vid);
-	free(p_Dec);
-
-	return 0;
 }
-
+#endif
 #endif
 
 /*!

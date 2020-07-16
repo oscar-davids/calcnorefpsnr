@@ -50,6 +50,7 @@ SUFFIX= .dbg
 FLAGS+= -g
 else
 SUFFIX=
+FLAGS+= -fPIC
 FLAGS+= $(OPT_FLAG)
 endif
 
@@ -59,7 +60,7 @@ SRC=    $(wildcard $(SRCDIR)/*.c)
 ADDSRC= $(wildcard $(ADDSRCDIR)/*.c)
 XMLSRC= $(wildcard $(XMLTRACESRCDIR)/*.c)
 OBJ=    $(SRC:$(SRCDIR)/%.c=$(OBJDIR)/%.o$(SUFFIX)) $(ADDSRC:$(ADDSRCDIR)/%.c=$(OBJDIR)/%.o$(SUFFIX)) $(XMLSRC:$(XMLTRACESRCDIR)/%.c=$(OBJDIR)/%.o$(SUFFIX))
-BIN=    $(BINDIR)/$(NAME)$(SUFFIX).exe
+BIN=    $(BINDIR)/$(NAME)$(SUFFIX).so
 
 .PHONY: default distclean clean tags depend
 
@@ -92,7 +93,7 @@ tags:
 bin:    $(OBJ)
 	@echo
 	@echo 'creating binary "$(BIN)"'
-	@$(CC) $(AFLAGS) -o $(BIN) $(OBJ) $(LIBS)
+	@$(CC) $(AFLAGS) -shared -o $(BIN) $(OBJ) $(LIBS)
 	@echo '... done'
 	@echo
 

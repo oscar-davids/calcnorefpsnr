@@ -9,7 +9,7 @@
  * \author
  *    Main contributors (see contributors.h for copyright, address and affiliation details)
  *     - Detlev Marpe
- *     - Karsten Sühring                 <suehring@hhi.de> 
+ *     - Karsten Sï¿½hring                 <suehring@hhi.de> 
  *     - Alexis Michael Tourapis         <alexismt@ieee.org> 
  *   
  *
@@ -21,6 +21,8 @@
 
 #ifndef _DEFINES_H_
 #define _DEFINES_H_
+
+#define BUILDEXE          0 
 
 #if defined _DEBUG
 # define TRACE           0      //!< 0:Trace off 1:Trace on 2:detailed CABAC context information

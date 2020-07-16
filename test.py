@@ -4,10 +4,25 @@ import os.path
 import argparse
 import subprocess
 import csv
-#from csv import reader
-from calcnorefpsnr import calcnorefpsnr
+import ctypes
+import platform
+import os.path
 
-calclib = calcnorefpsnr()
+lipath = os.path.abspath(os.path.dirname(__file__))
+if platform.system() == "Windows":
+    lib = ctypes.cdll.LoadLibrary(os.path.join(lipath, ".", "calcnorefpsnr.dll"))
+else:
+    lib = ctypes.cdll.LoadLibrary(os.path.join(lipath, ".", "calcnorefpsnr.so"))
+
+lib.calc_norefpsnr.restype = ctypes.c_float
+
+class norefpsnr:
+    def calc_norefpsnr(self, videopath):
+        strpath = videopath.encode('utf-8')
+        fpsnr = lib.calc_norefpsnr(strpath)
+        return fpsnr
+
+calclib = norefpsnr()
 
 def main():
     parser = argparse.ArgumentParser(description='psnr calculation parser.')
@@ -28,7 +43,7 @@ def main():
         for i in range(1, len(list_of_rows)):
             filelist.append(list_of_rows[i][0])
     elif srcdir != None:
-        filelist = [file for file in glob.glob(srcdir + "**/*.mp4", recursive=True)]
+        filelist = [file for file in glob.glob(srcdir + "**/*.mp4")]
     else:
         print("empty argument")
         return
@@ -36,7 +51,7 @@ def main():
     #mepath = os.path.abspath(os.path.dirname(__file__))
     #vpath = os.path.join(mepath, srcdir)
 
-    filepsnr = open('write.csv', 'w', newline='')
+    filepsnr = open('write.csv', 'w')
     wr = csv.writer(filepsnr)
 
     wr.writerow([0, 'filepath', 'psnr'])

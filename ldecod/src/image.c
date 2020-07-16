@@ -596,8 +596,8 @@ void calc_frame_psnr(VideoParameters *p_Vid)
 {
 	Slice *currSlice = p_Vid->currentSlice;
 
-	float totFrameMseBeta = 0.0;
-	float totFrameMseLambda = 0.0;
+	double totFrameMseBeta = 0.0;
+	double totFrameMseLambda = 0.0;
 	int totCnt = 0;
 	resultsList* results_list = currSlice->p_Psnr;
 	if (results_list == NULL) return;
@@ -634,7 +634,7 @@ void calc_frame_psnr(VideoParameters *p_Vid)
 		//fprintf(stdout, " totFrameMseBeta	: %lf \n", totFrameMseBeta);
 		//fprintf(stdout, " totFrameMseLambda : %lf \n", totFrameMseLambda);
 		//fprintf(stdout, " psnrFrameBeta		: %lf \n", psnrFrameBeta);
-		fprintf(stdout, " psnrFrameLambda	: %lf \n", psnrFrameLambda);		
+		//fprintf(stdout, " psnrFrameLambda	: %lf \n", psnrFrameLambda);		
 
 		// Free and reset.  
 		freeResultsList(currSlice->p_Psnr);
