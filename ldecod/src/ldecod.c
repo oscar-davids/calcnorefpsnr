@@ -67,6 +67,7 @@
 #include "block.h"
 #include "nalu.h"
 #include "img_io.h"
+#include "norefpsnr.h"
 
 #define LOGFILE     "log.dec"
 #define DATADECFILE "dataDec.txt"
@@ -611,6 +612,7 @@ float calc_norefpsnr(char* vpath)
 
 	return fpsnr;
 }
+#ifndef _WINDLL
 /*!
  ***********************************************************************
  * \brief
@@ -622,21 +624,21 @@ int main(int argc, char **argv)
 
 	calc_norefpsnr(argv[2]);
 
-  alloc_decoder(&p_Dec);
+	alloc_decoder(&p_Dec);
 
-  Configure (p_Dec->p_Vid, p_Dec->p_Inp, argc, argv);
+	Configure (p_Dec->p_Vid, p_Dec->p_Inp, argc, argv);
 
-  initBitsFile(p_Dec->p_Vid, p_Dec->p_Inp->FileFormat);
+	initBitsFile(p_Dec->p_Vid, p_Dec->p_Inp->FileFormat);
 
-  p_Dec->p_Vid->bitsfile->OpenBitsFile(p_Dec->p_Vid, p_Dec->p_Inp->infile);
+	p_Dec->p_Vid->bitsfile->OpenBitsFile(p_Dec->p_Vid, p_Dec->p_Inp->infile);
   
-  // Allocate Slice data struct
-  malloc_slice(p_Dec->p_Inp, p_Dec->p_Vid);
-  init_old_slice(p_Dec->p_Vid->old_slice);
+	// Allocate Slice data struct
+	malloc_slice(p_Dec->p_Inp, p_Dec->p_Vid);
+	init_old_slice(p_Dec->p_Vid->old_slice);
 
 	/***** XML_TRACE_BEGIN *****/
-  if(xml_gen_trace_file())
-  {
+	if(xml_gen_trace_file())
+	{
 	switch(xml_open_trace_file())
 	{
 		case -2: 
@@ -653,77 +655,78 @@ int main(int argc, char **argv)
 
 	xml_write_start_element("AVCTrace");
 	xml_write_string_attribute("version", XML_TRACE_VERSION);
-  }
-  /****** XML_TRACE_END ******/
+	}
+	/****** XML_TRACE_END ******/
 
-  init(p_Dec->p_Vid);
+	init(p_Dec->p_Vid);
  
-  init_out_buffer(p_Dec->p_Vid);  
+	init_out_buffer(p_Dec->p_Vid);  
 
-  while (decode_one_frame(p_Dec->p_Vid) != EOS)
-    ;
+	while (decode_one_frame(p_Dec->p_Vid) != EOS)
+	;
 
-  calc_total_psnr(p_Dec->p_Vid);
+	calc_total_psnr(p_Dec->p_Vid);
 
-  // YD: begin
-  //Report(p_Dec->p_Vid);
-  //free_slice(p_Dec->p_Vid->currentSlice);
-  // YD: end
-  FmoFinit(p_Dec->p_Vid);
+	// YD: begin
+	//Report(p_Dec->p_Vid);
+	//free_slice(p_Dec->p_Vid->currentSlice);
+	// YD: end
+	FmoFinit(p_Dec->p_Vid);
 
-  // YD: begin
-  //free_global_buffers(p_Dec->p_Vid);
-  // YD: end
-  flush_dpb(p_Dec->p_Vid);
+	// YD: begin
+	//free_global_buffers(p_Dec->p_Vid);
+	// YD: end
+	flush_dpb(p_Dec->p_Vid);
 
-  // YD: begin
-  // only free buffers after everything is send to the output
-  free_slice(p_Dec->p_Vid->currentSlice);
-  free_global_buffers(p_Dec->p_Vid);
+	// YD: begin
+	// only free buffers after everything is send to the output
+	free_slice(p_Dec->p_Vid->currentSlice);
+	free_global_buffers(p_Dec->p_Vid);
   
-  // only show the final report after all buffers have been emptied
-#ifdef USELOG
-  Report(p_Dec->p_Vid);
-#endif 
+	// only show the final report after all buffers have been emptied
+	#ifdef USELOG
+	Report(p_Dec->p_Vid);
+	#endif 
   
-  // YD: end
+	// YD: end
 
-#if (PAIR_FIELDS_IN_OUTPUT)
-  flush_pending_output(p_Dec->p_Vid, p_Dec->p_Vid->p_out);
-#endif
+	#if (PAIR_FIELDS_IN_OUTPUT)
+	flush_pending_output(p_Dec->p_Vid, p_Dec->p_Vid->p_out);
+	#endif
 
-  p_Dec->p_Vid->bitsfile->CloseBitsFile(p_Dec->p_Vid);
+	p_Dec->p_Vid->bitsfile->CloseBitsFile(p_Dec->p_Vid);
 
 	/***** XML_TRACE_BEGIN *****/
-  if(xml_gen_trace_file())
-  {
-	  xml_write_end_element();
-	  xml_close_trace_file();
-  }
-  /****** XML_TRACE_END ******/
+	if(xml_gen_trace_file())
+	{
+		xml_write_end_element();
+		xml_close_trace_file();
+	}
+	/****** XML_TRACE_END ******/
 
-  //close(p_Dec->p_Vid->p_out);
+	//close(p_Dec->p_Vid->p_out);
 
-  if (p_Dec->p_Vid->p_ref != -1)
-    close(p_Dec->p_Vid->p_ref);
+	if (p_Dec->p_Vid->p_ref != -1)
+	close(p_Dec->p_Vid->p_ref);
 
-#if TRACE
-  fclose(p_Dec->p_trace);
-#endif
+	#if TRACE
+	fclose(p_Dec->p_trace);
+	#endif
 
-  ercClose(p_Dec->p_Vid, p_Dec->p_Vid->erc_errorVar);
+	ercClose(p_Dec->p_Vid, p_Dec->p_Vid->erc_errorVar);
 
-  CleanUpPPS(p_Dec->p_Vid);
-  free_dpb(p_Dec->p_Vid);
-  uninit_out_buffer(p_Dec->p_Vid);
+	CleanUpPPS(p_Dec->p_Vid);
+	free_dpb(p_Dec->p_Vid);
+	uninit_out_buffer(p_Dec->p_Vid);
 
-  free (p_Dec->p_Inp);
-  free_img (p_Dec->p_Vid);
-  free(p_Dec);
+	free (p_Dec->p_Inp);
+	free_img (p_Dec->p_Vid);
+	free(p_Dec);
 
-  return 0;
+	return 0;
 }
 
+#endif
 
 /*!
  ***********************************************************************

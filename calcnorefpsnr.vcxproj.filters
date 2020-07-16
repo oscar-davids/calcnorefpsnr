@@ -349,5 +349,8 @@
     <ClInclude Include="ldecod\inc\calcpsnr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ldecod\inc\norefpsnr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

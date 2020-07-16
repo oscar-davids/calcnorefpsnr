@@ -44,7 +44,7 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v141</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
@@ -363,6 +363,7 @@
     <ClInclude Include="ldecod\inc\mb_prediction.h" />
     <ClInclude Include="ldecod\inc\mc_prediction.h" />
     <ClInclude Include="ldecod\inc\nalu.h" />
+    <ClInclude Include="ldecod\inc\norefpsnr.h" />
     <ClInclude Include="ldecod\inc\output.h" />
     <ClInclude Include="ldecod\inc\parset.h" />
     <ClInclude Include="ldecod\inc\parsetcommon.h" />
