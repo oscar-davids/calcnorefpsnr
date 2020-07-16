@@ -12,7 +12,7 @@ STC?= 0
 
 DEPEND= dependencies
 
-BINDIR= ../bin
+BINDIR= ../
 INCDIR= inc
 SRCDIR= src
 XMLTRACEINCDIR= xmltracefile/inc
