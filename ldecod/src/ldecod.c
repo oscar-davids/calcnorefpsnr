@@ -75,7 +75,7 @@
 
 // Decoder definition. This should be the only global variable in the entire
 // software. Global variables should be avoided.
-DecoderParams  *p_Dec;
+DecoderParams  *p_Dec = NULL;
 
 // Prototypes of static functions
 static void init_conf   (VideoParameters *p_Vid, InputParameters *p_Inp, char *config_filename);
@@ -511,8 +511,10 @@ void calc_total_psnr(VideoParameters *p_Vid)
 
 float calc_norefpsnr(char* vpath)
 {
+	if (vpath == NULL) return 0.0;
+
 	float fpsnr = 0.0;
-	if (vpath == NULL) return fpsnr;
+	fprintf(stdout, " %s\n", vpath);	
 
 	alloc_decoder(&p_Dec);
 
@@ -520,7 +522,7 @@ float calc_norefpsnr(char* vpath)
 
 	p_Dec->p_Vid->p_Inp = p_Inp;
 
-	strcpy(p_Inp->infile, vpath);      //! set default bitstream name
+	strcpy(p_Inp->infile, vpath);      //! set default bitstream name	
 	strcpy(p_Inp->outfile, "test_dec.yuv"); //! set default output file name
 	strcpy(p_Inp->reffile, "test_rec.yuv"); //! set default reference file name	
 
@@ -609,6 +611,7 @@ float calc_norefpsnr(char* vpath)
 	free_img(p_Dec->p_Vid);
 	free(p_Dec);
 
+	p_Dec = NULL;
 
 	return fpsnr;
 }
