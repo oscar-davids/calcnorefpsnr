@@ -1,0 +1,2 @@
+calcpsnr: calcpsnr.c calcpsnr.h
+	gcc -shared -o ../calcnorefpsnr.so -fPIC calcpsnr.c -DNDEBUG -O3 -pthread -lm -lavformat -lavfilter -lavcodec -lavutil -lswscale -I/home/ubuntunik/libshare/include/ -L/home/ubuntunik/libshare/lib/
