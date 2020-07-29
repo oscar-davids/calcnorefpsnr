@@ -1,4 +1,4 @@
-# python implementation of noref-psnr papers
+# python implementation of No-Reference PSNR papers
 
 NO-REFERENCE PSNR ESTIMATION ALGORITHM
 FOR H.264 ENCODED VIDEO SEQUENCES
